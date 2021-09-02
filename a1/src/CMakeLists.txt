@@ -16,6 +16,8 @@ add_library(database STATIC db/database.cc)
 # Find out the solution from the official documentation:
 # https://cmake.org/cmake/help/latest/guide/tutorial/Adding%20a%20Library.html
 #
-# add_executable(db ...)
-# target_link_libraries(...)
-#
+# Hint:
+#   add_executable(db xxx.cc)
+#   target_link_libraries(db PUBLIC Threads::Threads ...)
+#   install(TARGETS db DESTINATION ${DB_BINARY_DIR})
+
