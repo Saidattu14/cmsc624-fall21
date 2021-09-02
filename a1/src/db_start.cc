@@ -213,7 +213,7 @@ int main(int argc, char **argv)
     uint64_t dbSize;
 
     Request **txns[2];
-    Launcher *lnchr;
+    Launcher *lnchr = nullptr;
 
     PerfMonitor *monitor;
     pthread_t *monitor_thread;

@@ -40,7 +40,7 @@ ELSE(WIN32)
         IF(NOT HOST_SYSTEM)
             SET(HOST_SYSTEM ${CMAKE_SYSTEM_NAME})
         ENDIF()
-
+        set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-Wno-unused-but-set-variable -Wno-maybe-uninitialized")
     ENDIF(APPLE)
 ENDIF(WIN32)
 
