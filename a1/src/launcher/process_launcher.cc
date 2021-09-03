@@ -101,7 +101,7 @@ void ProcessLauncher::ExecuteRequest(Request *req)
          * YOUR CODE HERE
          *
          * Wait until the value of max_outstanding_ is greater than
-         * 0, and then decrements its value by 1. This guarantees that
+         * 0, and then decrement its value by 1. This guarantees that
          * the number of outstanding requests is always at most
          * max_outstanding_.
          */

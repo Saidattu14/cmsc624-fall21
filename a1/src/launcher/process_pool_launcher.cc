@@ -174,7 +174,11 @@ void ProcessPoolLauncher::ExecutorFunc(proc_state *st)
 
         /*
          * YOUR CODE HERE
+         *
+         * When your code is ready, remove the assert(false) statement
+         * below.
          */
+        assert(false);
     }
     exit(0);
 }
@@ -203,4 +207,5 @@ void ProcessPoolLauncher::ExecuteRequest(Request *req)
      * When your code is ready, remove the assert(false) statement
      * below.
      */
+    assert(false);
 }

@@ -90,7 +90,11 @@ void Request::Txn()
 
 void Request::Lock()
 {
-    /* YOUR CODE HERE */
+    /* 
+     * YOUR CODE HERE
+     *
+     * Hint: How can you ensure that there isn't a deadlock between requests?
+     */
 }
 
 void Request::Unlock()
