@@ -3,7 +3,7 @@ if(MSVC)
 else(MSVC)
     include(CheckCXXCompilerFlag)
     CHECK_CXX_COMPILER_FLAG("-std=c++11" SUPPORT_CXX11)
-    set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-Wall -std=c++11 -fPIC")
+    set(CMAKE_CXX_FLAGS "-Wall -std=c++11 -fPIC ${CMAKE_CXX_FLAGS}")
 endif(MSVC)
 
 #####
