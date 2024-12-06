@@ -13,6 +13,7 @@ class ProcessLauncher : public Launcher
    private:
     /* indicates the max # outstanding requests */
     volatile int* max_outstanding_;
+    uint8_t mx;
 
     /*
      * mutex lock and conditional variable guarantee that max outstanding requests

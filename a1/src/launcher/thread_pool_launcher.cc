@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <utils.h>
+
 #include <cassert>
 #include <iostream>
 
@@ -18,7 +19,7 @@ ThreadPoolLauncher::ThreadPoolLauncher(int pool_sz) : Launcher()
     pool_sz_ = pool_sz;
 
     /*
-     * YOUR CODE HERE
+     *
      *
      * Initialize num_idle_threads_ (num_idle_threads_mutex_ and num_idle_threads_cond_)
      * and pool_mutex_.
@@ -31,13 +32,18 @@ ThreadPoolLauncher::ThreadPoolLauncher(int pool_sz) : Launcher()
      * When your code is ready, remove the assert(false) statement
      * below.
      */
-    assert(false);
+    num_idle_threads_ = pool_sz;
+    pthread_mutex_init(&num_idle_threads_mutex_, NULL);
+    pthread_cond_init(&num_idle_threads_cond_, NULL);
+    pthread_mutex_init(&pool_mutex_, NULL);
+    // assert(false);
 
     /*
      * Initialize thread_state structs. Each thread in the thread pool is
      * assigned a thread_state struct.
      */
     states = (thread_state *)malloc(sizeof(thread_state) * pool_sz);
+
     for (i = 0; i < pool_sz; ++i)
     {
         thread = (pthread_t *)malloc(sizeof(pthread_t));
@@ -60,18 +66,28 @@ ThreadPoolLauncher::ThreadPoolLauncher(int pool_sz) : Launcher()
         states[i].next_                   = &states[i + 1];
         states[i].pool_                   = &pool_;
     }
-    states[i - 1].next_ = NULL;
-    pool_          = states;
+    states[i - 1].next_ = &states[0];
+    pool_               = states;
 
     /*
-     * YOUR CODE HERE
+     *
      *
      * Create threads in the thread pool.
      *
      * When your code is ready, remove the assert(false) statement
      * below.
      */
-    assert(false);
+    // assert(false);
+    pthread_mutex_lock(&pool_mutex_);
+    for (int i = 0; i < pool_sz; i++)
+    {
+        if (pthread_create(pool_[i].thread_id_, NULL, ExecutorFunc, (void *)&pool_[i]) != 0)
+        {
+            perror("Thread creation failed");
+            exit(EXIT_FAILURE);
+        }
+    }
+    pthread_mutex_unlock(&pool_mutex_);
 }
 
 ThreadPoolLauncher::~ThreadPoolLauncher()
@@ -118,7 +134,7 @@ void ThreadPoolLauncher::ExecuteRequest(Request *req)
     num_requests_++;
 
     /*
-     * YOUR CODE HERE
+     *
      *
      * Find an idle thread from the pool, and execute the request on
      * the idle thread.
@@ -131,18 +147,42 @@ void ThreadPoolLauncher::ExecuteRequest(Request *req)
      * When your code is ready, remove the assert(false) statement
      * below.
      */
-    assert(false);
+    //  std::cout << num_requests_ << "\n";
+    pthread_mutex_lock(&num_idle_threads_mutex_);
+    while (num_idle_threads_ == 0)
+    {
+        pthread_cond_wait(&num_idle_threads_cond_, &num_idle_threads_mutex_);
+    }
+    num_idle_threads_--;
+    pthread_mutex_unlock(&num_idle_threads_mutex_);
+
+    pthread_mutex_lock(&pool_mutex_);
+    while (true)
+    {
+        if (pool_->thread_ready_ == false)
+        {
+            pool_->thread_ready_ = true;
+            pool_->req_          = req;
+            pthread_cond_signal(&pool_->thread_ready_cond_);
+            pool_ = pool_->next_;
+            break;
+        }
+        else
+        {
+            pool_ = pool_->next_;
+        }
+    }
+    pthread_mutex_unlock(&pool_mutex_);
 }
 
 void *ThreadPoolLauncher::ExecutorFunc(void *arg)
 {
     thread_state *st;
-
     st = (thread_state *)arg;
     while (true)
     {
         /*
-         * YOUR CODE HERE
+         *
          *
          * Wait for a new request, and execute it. After executing the
          * request return thread_state to the launcher's thread_state
@@ -151,16 +191,28 @@ void *ThreadPoolLauncher::ExecutorFunc(void *arg)
          * When your code is ready, remove the assert(false) statement
          * below.
          */
-        assert(false);
 
+        //  assert(false);
+        pthread_mutex_lock(&st->thread_ready_mutex_);
+        while (st->thread_ready_ == false)
+        {
+                        pthread_cond_wait(&st->thread_ready_cond_, &st->thread_ready_mutex_);
+        }
         /* exec request */
+        //  std::cout << "thread" << *(st->thread_id_) << "    " << *(st->txns_executed_) << "\n";
+
         st->req_->Execute();
         fetch_and_increment(st->txns_executed_);
+        st->thread_ready_ = false;
+        pthread_mutex_unlock(&st->thread_ready_mutex_);
 
-        /*
-         * YOUR CODE HERE
-         */
-        assert(false);
+        //  std::cout << "finisedthread" << *(st->thread_id_) << "    " << *(st->txns_executed_) << "\n";
+
+        pthread_mutex_lock(st->num_idle_threads_mutex_);
+        (*(st->num_idle_threads_))++;
+        pthread_cond_signal(st->num_idle_threads_cond_);
+        pthread_mutex_unlock(st->num_idle_threads_mutex_);
     }
+
     return NULL;
 }

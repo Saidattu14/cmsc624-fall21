@@ -19,13 +19,13 @@ TEST(LockManagerA_SimpleLocking)
 
     // Txn 1 acquires read lock.
     lm.ReadLock(t1, 101);
+   
     ready_txns.push_back(t1);  // Txn 1 is ready.
     EXPECT_EQ(EXCLUSIVE, lm.Status(101, &owners));
     EXPECT_EQ(1, owners.size());
     EXPECT_EQ(t1, owners[0]);
     EXPECT_EQ(1, ready_txns.size());
     EXPECT_EQ(t1, ready_txns.at(0));
-
     // Txn 2 requests write lock. Not granted.
     lm.WriteLock(t2, 101);
     EXPECT_EQ(EXCLUSIVE, lm.Status(101, &owners));

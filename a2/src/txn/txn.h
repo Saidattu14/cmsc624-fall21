@@ -93,6 +93,7 @@ class Txn
     // Results of reads performed by the transaction.
     map<Key, Value> reads_;
 
+
     // Key, Value pairs WRITTEN by the transaction.
     map<Key, Value> writes_;
 
@@ -104,6 +105,8 @@ class Txn
 
     // Start index (used for OCC).
     int64_t occ_start_idx_;
+
+    double occ_start_time_;
 };
 
 #endif  // _TXN_H_

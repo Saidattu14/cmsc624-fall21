@@ -25,9 +25,12 @@ enum CCMode
     SERIAL                 = 0,  // Serial transaction execution (no concurrency)
     LOCKING_EXCLUSIVE_ONLY = 1,  // Part 1A
     LOCKING                = 2,  // Part 1B
-    OCC                    = 3,  // Part 2
-    P_OCC                  = 4,  // Part 3
-    MVCC                   = 5,  // Part 4
+    OCC_SERIAL_FORWARD_VALIDATION = 3,
+    OCC_SERIAL_BACKWARD_VALIDATION = 4,
+    OCC_PARREL_FORWARD_VALIDATION = 5,
+    OCC_PARREL_BACKWARD_VALIDATION = 6,
+    MVCC_MVTO                   = 7,
+    MVCC_MV2PL                   = 8,  
 };
 
 // Returns a human-readable string naming of the providing mode.
@@ -52,17 +55,24 @@ class TxnProcessor
     // ownership of the returned Txn.
     Txn* GetTxnResult();
 
+    vector<Txn*> GetTxnVectorResults();
+
     // Main loop implementing all concurrency control/thread scheduling.
     void RunScheduler();
 
     static void* StartScheduler(void* arg);
 
+    
    private:
     // Serial validation
     bool SerialValidate(Txn* txn);
 
-    // Parallel executtion/validation for OCC
-    void ExecuteTxnParallel(Txn* txn);
+    // Parallel execution/validation for OCC
+    void ExecuteTxnParallelBackwardValidation(Txn* txn);
+
+
+    // Parallel execution/validation for OCC
+    void ExecuteTxnParallelForwardValidation(Txn* txn);
 
     // Serial version of scheduler.
     void RunSerialScheduler();
@@ -70,18 +80,36 @@ class TxnProcessor
     // Locking version of scheduler.
     void RunLockingScheduler();
 
-    // OCC version of scheduler.
-    void RunOCCScheduler();
+   
 
-    // OCC version of scheduler with parallel validation.
-    void RunOCCParallelScheduler();
+    //OCC serial version of scheduler forward validation.
+    void RunOCCSerialSchedulerForwardValidation();
+
+    //OCC serial version of scheduler backward validation.
+    void RunOCCSerialSchedulerBackwardValidation();
+
+
+    //OCC parallel version of scheduler forward validation.
+    void RunOCCParallelSchedulerForwardValidation();
+
+    //OCC parallel version of scheduler backward validation.
+    void RunOCCParallelSchedulerBackwardValidation();
+
 
     // MVCC version of scheduler.
-    void RunMVCCScheduler();
+    void RunMVCCMVTOScheduler();
 
     // Performs all reads required to execute the transaction, then executes the
     // transaction logic.
     void ExecuteTxn(Txn* txn);
+
+
+    bool MVCC2PLCheckWrites(Txn* txn);
+
+    void RunMVCCMV2PLScheduler();
+
+    void MVCC2PLExecuteTxn(Txn* txn);
+
 
     // Applies all writes performed by '*txn' to 'storage_'.
     //
@@ -89,7 +117,7 @@ class TxnProcessor
     void ApplyWrites(Txn* txn);
 
     // The following functions are for MVCC
-    void MVCCExecuteTxn(Txn* txn);
+    void MVCCMVTOExecuteTxn(Txn* txn);
 
     bool MVCCCheckWrites(Txn* txn);
 
@@ -120,6 +148,7 @@ class TxnProcessor
     // Does not need to be atomic because RunScheduler is the only thread that
     // will ever access this queue.
     deque<Txn*> ready_txns_;
+    
 
     // Queue of completed (but not yet committed/aborted) transactions.
     AtomicQueue<Txn*> completed_txns_;
@@ -147,6 +176,7 @@ class TxnProcessor
 
     // Gives us access to the scheduler thread so that we can wait for it to join later.
     pthread_t scheduler_thread_;
+
 };
 
 #endif  // _TXN_PROCESSOR_H_

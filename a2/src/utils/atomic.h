@@ -4,7 +4,7 @@
 #include <queue>
 #include <set>
 #include <unordered_map>
-
+#include <vector>
 #include <assert.h>
 #include "utils/mutex.h"
 
@@ -374,6 +374,16 @@ class AtomicVector
 
     // CMSC 624: TODO(students)
     // Feel free to add more methods as needed.
+
+   
+    vector<T> GetVector(int index)
+    {
+        mutex_.ReadLock();
+        vector<T> my_vec;
+        my_vec.insert(my_vec.begin(), vec_.begin()+index, vec_.end());
+        mutex_.Unlock();
+        return my_vec;
+    }
 
    private:
     vector<T> vec_;

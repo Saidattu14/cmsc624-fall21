@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <utils.h>
+
 #include <fstream>
 #include <iostream>
 #include <set>
@@ -182,7 +183,7 @@ void write_results(expt_config conf, double *results)
             break;
         case PROCESS:
             result_file << "process ";
-            result_file << "max_oustanding:" << conf.max_outstanding_ << " ";
+            result_file << "max_outstanding:" << conf.max_outstanding_ << " ";
             break;
         case THREAD_POOL:
             result_file << "thread_pool ";
@@ -237,7 +238,7 @@ int main(int argc, char **argv)
         dbSize = HIGH_DATABASE_SZ;
     else
         dbSize = LOW_DATABASE_SZ;
-    db         = Database::Create(dbSize, multiProcess);
+    db = Database::Create(dbSize, multiProcess);
 
     /* Generate requests to process */
     txns[0] = generate_requests(db, DRY_RUN_SZ);

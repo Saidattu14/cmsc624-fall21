@@ -1,9 +1,12 @@
 #include "process_pool_launcher.h"
 
+#include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <unistd.h>
 #include <utils.h>
+
 #include <cassert>
 #include <iostream>
 
@@ -19,7 +22,7 @@ ProcessPoolLauncher::ProcessPoolLauncher(uint32_t nprocs) : Launcher()
     launcher_state_ = (proc_mgr *)mmap(NULL, sizeof(proc_mgr), PROT_FLAGS, MAP_FLAGS, 0, 0);
 
     /*
-     * YOUR CODE HERE
+     *
      *
      * Initialize launcher_state_->num_idle_procs_, num_idle_procs_mutex_ and
      * num_idle_procs_cond_ with an appropriate starting value/attributes.
@@ -34,10 +37,28 @@ ProcessPoolLauncher::ProcessPoolLauncher(uint32_t nprocs) : Launcher()
      * When your code is ready, remove the assert(false) statement
      * below.
      */
-    assert(false);
+    launcher_state_->num_idle_procs_ = (volatile uint32_t *)mmap(NULL, sizeof(uint32_t), PROT_FLAGS, MAP_FLAGS, 0, 0);
+    memset((void *)launcher_state_->num_idle_procs_, 0x0, sizeof(uint32_t));
+    *launcher_state_->num_idle_procs_ = nprocs;
+
+    launcher_state_->num_idle_procs_mutex_ =
+        (pthread_mutex_t *)mmap(NULL, sizeof(pthread_mutex_t), PROT_FLAGS, MAP_FLAGS, 0, 0);
+    pthread_mutexattr_t mutexattr;
+    pthread_mutexattr_init(&mutexattr);
+    pthread_mutexattr_setpshared(&mutexattr, PTHREAD_PROCESS_SHARED);
+    pthread_mutex_init(launcher_state_->num_idle_procs_mutex_, &mutexattr);
+
+    launcher_state_->num_idle_procs_cond_ =
+        (pthread_cond_t *)mmap(NULL, sizeof(pthread_cond_t), PROT_FLAGS, MAP_FLAGS, 0, 0);
+    pthread_condattr_t condattr;
+    pthread_condattr_init(&condattr);
+    pthread_condattr_setpshared(&condattr, PTHREAD_PROCESS_SHARED);
+    pthread_cond_init(launcher_state_->num_idle_procs_cond_, &condattr);
+
+    // assert(false);
 
     /*
-     * YOUR CODE HERE
+     *
      *
      * pool_mutex_ is used as a mutex lock. It protects the pool of
      * idle processes from concurrent modifications.
@@ -49,7 +70,13 @@ ProcessPoolLauncher::ProcessPoolLauncher(uint32_t nprocs) : Launcher()
      * When your code is ready, remove the assert(false) statement
      * below.
      */
-    assert(false);
+    launcher_state_->pool_mutex_ = (pthread_mutex_t *)mmap(NULL, sizeof(pthread_mutex_t), PROT_FLAGS, MAP_FLAGS, 0, 0);
+    pthread_mutexattr_t mutexattr1;
+    pthread_mutexattr_init(&mutexattr1);
+    pthread_mutexattr_setpshared(&mutexattr1, PTHREAD_PROCESS_SHARED);
+    pthread_mutex_init(launcher_state_->pool_mutex_, &mutexattr1);
+
+    // assert(false);
 
     /*
      * Setup request buffers. Each process in the pool has its own private
@@ -60,7 +87,7 @@ ProcessPoolLauncher::ProcessPoolLauncher(uint32_t nprocs) : Launcher()
     req_bufs = (char *)mmap((NULL), nprocs * RQST_BUF_SZ, PROT_FLAGS, MAP_FLAGS, 0, 0);
 
     /*
-     * YOUR CODE HERE
+     *
      *
      * Each process in the pool has a corresponding mutex, conditional variable
      * and value (procs_ready) which are used to signal the process to begin executing
@@ -74,7 +101,24 @@ ProcessPoolLauncher::ProcessPoolLauncher(uint32_t nprocs) : Launcher()
     bool *procs_ready            = NULL;
     pthread_mutex_t *procs_mutex = NULL;
     pthread_cond_t *procs_cond   = NULL;
-    assert(false);
+    procs_ready                  = (bool *)mmap(NULL, sizeof(bool) * nprocs, PROT_FLAGS, MAP_FLAGS, 0, 0);
+    procs_mutex = (pthread_mutex_t *)mmap(NULL, sizeof(pthread_mutex_t) * nprocs, PROT_FLAGS, MAP_FLAGS, 0, 0);
+    procs_cond  = (pthread_cond_t *)mmap(NULL, sizeof(pthread_cond_t) * nprocs, PROT_FLAGS, MAP_FLAGS, 0, 0);
+    for (i = 0; i < nprocs; ++i)
+    {
+        procs_ready[i] = false;
+        pthread_mutexattr_t mutexattr1;
+        pthread_mutexattr_init(&mutexattr1);
+        pthread_mutexattr_setpshared(&mutexattr1, PTHREAD_PROCESS_SHARED);
+        pthread_mutex_init(&procs_mutex[i], &mutexattr1);
+
+        pthread_condattr_t condattr1;
+        pthread_condattr_init(&condattr1);
+        pthread_condattr_setpshared(&condattr1, PTHREAD_PROCESS_SHARED);
+        pthread_cond_init(&procs_cond[i], &condattr1);
+    }
+
+    // assert(false);
 
     /*
      * Setup proc_states for each process in the pool. proc_states are
@@ -92,11 +136,11 @@ ProcessPoolLauncher::ProcessPoolLauncher(uint32_t nprocs) : Launcher()
         pstates[i].txns_executed_  = txns_executed_;
         pstates[i].next_           = &pstates[i + 1];
     }
-    pstates[i - 1].next_    = NULL;
+    pstates[i - 1].next_   = &pstates[0];
     launcher_state_->pool_ = pstates;
 
     /*
-     * YOUR CODE HERE
+     *
      *
      * Launch the processes in the process pool.
      * Also, remember to update pool_sz_
@@ -104,7 +148,19 @@ ProcessPoolLauncher::ProcessPoolLauncher(uint32_t nprocs) : Launcher()
      * When your code is ready, remove the assert(false) statement
      * below.
      */
-    assert(false);
+    pool_sz_ = nprocs;
+    pthread_mutex_lock(launcher_state_->pool_mutex_);
+    for (int i1 = 0; i1 < nprocs; i1++)
+    {
+        pid_t pid;
+        pid = fork();
+        if (pid == 0)
+        {
+            ExecutorFunc(&launcher_state_->pool_[i1]);
+        }
+    }
+    pthread_mutex_unlock(launcher_state_->pool_mutex_);
+    // assert(false);
 }
 
 ProcessPoolLauncher::~ProcessPoolLauncher()
@@ -125,7 +181,7 @@ ProcessPoolLauncher::~ProcessPoolLauncher()
     err = munmap((void *)launcher_state_->pool_mutex_, sizeof(pthread_mutex_t));
     assert(err == 0);
 
-    proc_state* pstate = launcher_state_->pool_;
+    proc_state *pstate = launcher_state_->pool_;
     while (pstate != NULL)
     {
         err = munmap((void *)pstate->proc_ready_, sizeof(bool));
@@ -142,8 +198,8 @@ ProcessPoolLauncher::~ProcessPoolLauncher()
         err = munmap((void *)pstate->request_, RQST_BUF_SZ);
         assert(err == 0);
 
-        proc_state* next = pstate->next_;
-        err = munmap((void *)pstate, sizeof(proc_state));
+        proc_state *next = pstate->next_;
+        err              = munmap((void *)pstate, sizeof(proc_state));
         assert(err == 0);
         pstate = next;
     }
@@ -157,7 +213,7 @@ void ProcessPoolLauncher::ExecutorFunc(proc_state *st)
     while (true)
     {
         /*
-         * YOUR CODE HERE
+         *
          *
          * Wait for a new request, and execute it. After executing the
          * request return proc_state to the launcher's proc_state
@@ -167,18 +223,31 @@ void ProcessPoolLauncher::ExecutorFunc(proc_state *st)
          * When your code is ready, remove the assert(false) statement
          * below.
          */
-        assert(false);
 
+        // assert(false);
+        pthread_mutex_lock(st->proc_mutex_);
+        while (*st->proc_ready_ == false)
+        {
+            pthread_cond_wait(st->proc_cond_, st->proc_mutex_);
+        }
         st->request_->Execute();
         fetch_and_increment(st->txns_executed_);
+        *st->proc_ready_ = false;
+        pthread_mutex_unlock(st->proc_mutex_);
 
+        // st->launcher_state_->pool_mutex_
+        pthread_mutex_lock(st->launcher_state_->num_idle_procs_mutex_);
+        *(st->launcher_state_->num_idle_procs_)++;
+        pthread_cond_signal(st->launcher_state_->num_idle_procs_cond_);
+        // std::cout << st->launcher_state_->num_idle_procs_ << "dj\n";
+        pthread_mutex_unlock(st->launcher_state_->num_idle_procs_mutex_);
         /*
-         * YOUR CODE HERE
+         *
          *
          * When your code is ready, remove the assert(false) statement
          * below.
          */
-        assert(false);
+        // assert(false);
     }
     exit(0);
 }
@@ -191,9 +260,10 @@ void ProcessPoolLauncher::ExecuteRequest(Request *req)
      */
     num_requests_++;
 
-    st = NULL;
+    st = launcher_state_->pool_;
+
     /*
-     * YOUR CODE HERE
+     *
      *
      * Find an idle process from pool_, **copy** the request into the
      * process' request buffer, and execute the request on the idle process.
@@ -201,11 +271,36 @@ void ProcessPoolLauncher::ExecuteRequest(Request *req)
      * Hint: Use the process' proc_ready_, and the launcher's num_idle_procs_
      * to initiate a new request on the idle process, and ensure that there
      * exist idle processes.
-     * 
+     *
      * Hint: Use the API from txn/request.h to copy the request.
      *
      * When your code is ready, remove the assert(false) statement
      * below.
      */
-    assert(false);
+    // std::cout << num_requests_ << "\n";
+    pthread_mutex_lock(st->launcher_state_->num_idle_procs_mutex_);
+    while (*st->launcher_state_->num_idle_procs_ == 0)
+    {
+        pthread_cond_wait(st->launcher_state_->num_idle_procs_cond_, st->launcher_state_->num_idle_procs_mutex_);
+    }
+    *(st->launcher_state_->num_idle_procs_)--;
+    pthread_mutex_unlock(st->launcher_state_->num_idle_procs_mutex_);
+
+    pthread_mutex_lock(st->launcher_state_->pool_mutex_);
+    while (true)
+    {
+        if (*st->proc_ready_ == false)
+        {
+            *st->proc_ready_ = true;
+            st->request_->CopyRequest((char *)st->request_, req);
+            pthread_cond_signal(st->proc_cond_);
+            break;
+        }
+        else
+        {
+            st = st->next_;
+        }
+    }
+    pthread_mutex_unlock(st->launcher_state_->pool_mutex_);
+    // assert(false);
 }

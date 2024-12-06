@@ -30,6 +30,10 @@ class Storage
     // updated (returns 0 if the record has never been updated). This is used for OCC.
     virtual double Timestamp(Key key);
 
+    
+
+   
+
     // Init storage
     virtual void InitStorage();
 
@@ -38,6 +42,9 @@ class Storage
     virtual void Lock(Key key) {}
     virtual void Unlock(Key key) {}
     virtual bool CheckWrite(Key key, int txn_unique_id) { return true; }
+
+    virtual bool CheckWrite1(Key key, int txn_unique_id) { return true; }
+  //  virtual void reupdate_read(Key key, int txn_unique_id,int previous_tmp);
    private:
     friend class TxnProcessor;
 
@@ -46,6 +53,12 @@ class Storage
 
     // Timestamps at which each key was last updated.
     unordered_map<Key, double> timestamps_;
+
+
+    // Last wrote committed indexs at which each key was last updated.
+    unordered_map<Key, int> committed_indexs_;
+
+
 };
 
 #endif  // _STORAGE_H_

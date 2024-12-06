@@ -16,12 +16,18 @@ string ModeToString(CCMode mode)
             return " Locking A";
         case LOCKING:
             return " Locking B";
-        case OCC:
-            return " OCC      ";
-        case P_OCC:
-            return " OCC-P    ";
-        case MVCC:
-            return " MVCC     ";
+        case OCC_SERIAL_FORWARD_VALIDATION:
+            return " OCC-S-FD ";
+        case OCC_PARREL_FORWARD_VALIDATION:
+            return " P_OCC-FD ";
+        case OCC_SERIAL_BACKWARD_VALIDATION:
+            return " OCC-S-BD ";
+        case OCC_PARREL_BACKWARD_VALIDATION:
+            return " P_OCC-BD ";
+        case MVCC_MVTO:
+            return " MVCC_MVTO  ";
+        case MVCC_MV2PL:
+            return " MVCC_MV2PL ";
         default:
             return "INVALID MODE";
     }
@@ -145,7 +151,7 @@ void Benchmark(const vector<LoadGen*>& lg)
     deque<Txn*> doneTxns;
 
     // For each MODE...
-    for (CCMode mode = SERIAL; mode <= MVCC; mode = static_cast<CCMode>(mode + 1))
+    for (CCMode mode = OCC_SERIAL_BACKWARD_VALIDATION; mode <= OCC_PARREL_BACKWARD_VALIDATION; mode = static_cast<CCMode>(mode + 2))
     {
         // Print out mode name.
         cout << ModeToString(mode) << flush;
@@ -183,12 +189,11 @@ void Benchmark(const vector<LoadGen*>& lg)
                     doneTxns.push_back(txn);
                     txn_count++;
                 }
-
                 // Record end time.
                 double end = GetTime();
 
                 throughput[round] = txn_count / (end - start);
-
+                 
                 for (auto it = doneTxns.begin(); it != doneTxns.end(); ++it)
                 {
                     delete *it;
@@ -199,6 +204,7 @@ void Benchmark(const vector<LoadGen*>& lg)
             }
 
             // Print throughput
+            
             cout << "\t" << (throughput[0] + throughput[1]) / 2 << "\t" << flush;
         }
 

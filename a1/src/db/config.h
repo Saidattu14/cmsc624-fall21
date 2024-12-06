@@ -3,6 +3,7 @@
 
 #include <getopt.h>
 #include <stdlib.h>
+
 #include <cassert>
 #include <iostream>
 #include <unordered_map>
@@ -60,7 +61,8 @@ class expt_config
             }
             else if (index == -1)
             { /* unknown argument */
-                std::cerr << "Error. Unknown argument.\n";
+
+                std::cerr << "Error. Unknown argumentttttt.\n";
                 exit(-1);
             }
             else

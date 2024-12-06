@@ -4,6 +4,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <utils.h>
+
 #include <cassert>
 #include <climits>
 #include <cstddef>
@@ -33,6 +34,7 @@ ProcessLauncher::ProcessLauncher(int max_outstanding) : Launcher()
     max_outstanding_ = (volatile int *)mmap(NULL, sizeof(int), PROT_FLAGS, MAP_FLAGS, 0, 0);
     memset((void *)max_outstanding_, 0x0, sizeof(int));
     *max_outstanding_ = max_outstanding;
+    mx                = max_outstanding;
 
     /*
      * Map max_outstanding_mutex_ and max_outstanding_cond_ into a memory segment that is shared
@@ -79,7 +81,7 @@ void ProcessLauncher::ExecuteRequest(Request *req)
      * Track the number of requests issued.
      */
     num_requests_++;
-
+    // std::cout << num_requests_ << "\n";
     /* fork() creates a new child process.
      *
      * fork() returns 0 to the child process (the code-path corresponding to
@@ -88,6 +90,7 @@ void ProcessLauncher::ExecuteRequest(Request *req)
      * fork() returns a non-zero pid to the parent process (the code-path
      * corresponding to the "else" branch).
      */
+
     if ((pid = fork()) != 0)
     { /* This code is executed in the parent */
 
@@ -98,17 +101,24 @@ void ProcessLauncher::ExecuteRequest(Request *req)
         assert(pid != -1);
 
         /*
-         * YOUR CODE HERE
+         *
          *
          * Wait until the value of max_outstanding_ is greater than
          * 0, and then decrement its value by 1. This guarantees that
          * the number of outstanding requests is always at most
          * max_outstanding_.
          */
+        pthread_mutex_lock(max_outstanding_mutex_);
+        while (mx >= *max_outstanding_)
+        {
+            pthread_cond_wait(max_outstanding_cond_, max_outstanding_mutex_);
+        }
+        (*max_outstanding_)--;
+        pthread_mutex_unlock(max_outstanding_mutex_);
     }
     else
-    { /* This code is executed in the child */
-
+    {
+        /* This code is executed in the child */
         /*
          * Execute the request. We treat requests' "execute" function
          * as a black-box. Just make sure it's called at the appropriate
@@ -120,14 +130,17 @@ void ProcessLauncher::ExecuteRequest(Request *req)
         fetch_and_increment(this->txns_executed_);
 
         /*
-         * YOUR CODE HERE
+         *
          *
          * Increment the value of max_outstanding_, which tells the
          * parent process that an outstanding request has finished
          * executing.
          */
-        
-        
+
+        pthread_mutex_lock(max_outstanding_mutex_);
+        (*max_outstanding_)++;
+        pthread_cond_signal(max_outstanding_cond_);
+        pthread_mutex_unlock(max_outstanding_mutex_);
         exit(0); /* Why need to exit? */
     }
 }

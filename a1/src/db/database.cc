@@ -2,6 +2,7 @@
 
 #include <string.h>
 #include <utils.h>
+
 #include <cassert>
 #include <cstddef>
 #include <cstdlib>
@@ -52,6 +53,7 @@ Database *Database::Create(uint32_t recordNum, bool multiProcess)
     pthread_mutex_t *mutex_mem;
     uint32_t i;
     int sem_flag;
+    std::unordered_map<uint64_t, bool> *lockedMap = new std::unordered_map<uint64_t, bool>();
 
     /*
      * Allocate memory to Database class, records, and their semaphores.
@@ -94,13 +96,13 @@ Database *Database::Create(uint32_t recordNum, bool multiProcess)
             pthread_mutex_init(&mutex_mem[i], &mutexattr);
         }
         InitRecord((char *)&record_mem[i]);
+        lockedMap->emplace(i, false);
     }
-
     /* Initialize db class state */
     db_mem->num_records_ = recordNum;
     db_mem->records_     = record_mem;
     db_mem->locks_       = mutex_mem;
-
+    db_mem->lockedMap    = lockedMap;
     return db_mem;
 }
 
@@ -153,14 +155,18 @@ void Database::LockRecord(uint64_t key)
 {
     assert(key < (uint64_t)num_records_);
     pthread_mutex_lock(&locks_[key]);
+    lockedMap->at(key) = true;
 }
 
 /* Relinquish mutually exclusive access to a Record. */
 void Database::UnlockRecord(uint64_t key)
 {
     assert(key < (uint64_t)num_records_);
+    lockedMap->at(key) = false;
     pthread_mutex_unlock(&locks_[key]);
 }
 
 /* Return a reference to a record */
 Record *Database::GetRecord(uint64_t key) { return &records_[key]; }
+
+bool Database::isRecordLocked(uint64_t key) { return lockedMap->at(key); }

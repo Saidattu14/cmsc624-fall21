@@ -7,6 +7,8 @@
 #include <semaphore.h>
 #include <stdint.h>
 
+#include <unordered_map>
+
 struct Record
 {
     char bytes_[RECORD_SIZE];
@@ -24,7 +26,7 @@ class Database
     uint32_t num_records_;
     Record *records_;
     pthread_mutex_t *locks_;
-
+    std::unordered_map<uint64_t, bool> *lockedMap = new std::unordered_map<uint64_t, bool>();
     static void InitRecord(char *buf);
 
    public:
@@ -33,6 +35,7 @@ class Database
     static void Compare(Database *db1, Database *db2);
     static void Copy(Database *dst, Database *src);
 
+    bool isRecordLocked(uint64_t key);
     Record *GetRecord(uint64_t key);
     void LockRecord(uint64_t key);
     void UnlockRecord(uint64_t key);

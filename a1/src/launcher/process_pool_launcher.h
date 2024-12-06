@@ -3,6 +3,9 @@
 
 #include <semaphore.h>
 
+#include <cstdint>
+#include <cstdlib>  // For size_t
+
 #include "launcher.h"
 #include "txn/request.h"
 
@@ -26,11 +29,11 @@ struct proc_state
 
     pthread_mutex_t *proc_mutex_; /* proc mutex exclusive lock */
     pthread_cond_t *proc_cond_;   /* proc conditional variable */
-    bool *proc_ready_;             /* notify proc of a request */
+    bool *proc_ready_;            /* notify proc of a request */
 
     proc_mgr *launcher_state_;         /* global pool mgmt state */
     volatile uint64_t *txns_executed_; /* ptr to txn executed counter */
-    proc_state *next_;             /* links proc states */
+    proc_state *next_;                 /* links proc states */
 };
 
 class ProcessPoolLauncher : public Launcher

@@ -11,6 +11,16 @@ struct Version
     int version_id_;   // Timestamp of the transaction that created(wrote) the version
 };
 
+
+struct Version_OCC
+{
+    Value value_;      // The value of this version
+    int begin_id_;  // timestamp of a transaction that read the version
+    int end_id_;   // Timestamp of the transaction that created(wrote) the version
+};
+
+
+
 // MVCC storage
 class MVCCStorage : public Storage
 {
@@ -39,6 +49,11 @@ class MVCCStorage : public Storage
     // Check whether apply or abort the write
     virtual bool CheckWrite(Key key, int txn_unique_id);
 
+
+     virtual bool CheckWrite1(Key key, int txn_unique_id);
+
+    //virtual void reupdate_read(Key key, int txn_unique_id,int previous_tmp);
+
     virtual ~MVCCStorage();
 
    private:
@@ -46,6 +61,8 @@ class MVCCStorage : public Storage
 
     // Storage for MVCC, each key has a linklist of versions
     unordered_map<Key, deque<Version*>*> mvcc_data_;
+
+    unordered_map<Key, deque<Version_OCC*>*> mvcc_occ_data_;
 
     // Mutexs for each key
     unordered_map<Key, Mutex*> mutexs_;

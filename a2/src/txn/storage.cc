@@ -1,5 +1,7 @@
 #include "storage.h"
 
+
+
 bool Storage::Read(Key key, Value* result, int txn_unique_id)
 {
     if (data_.count(key))
@@ -13,12 +15,17 @@ bool Storage::Read(Key key, Value* result, int txn_unique_id)
     }
 }
 
+
+
+
 // Write value and timestamps
 void Storage::Write(Key key, Value value, int txn_unique_id)
 {
     data_[key]       = value;
     timestamps_[key] = GetTime();
 }
+
+
 
 double Storage::Timestamp(Key key)
 {
@@ -34,3 +41,9 @@ void Storage::InitStorage()
         Write(i, 0, 0);
     }
 }
+
+// void Storage::reupdate_read(Key key, int txn_unique_id,int previous_tmp)
+// {
+// }
+
+

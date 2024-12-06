@@ -1,10 +1,13 @@
 #include "request.h"
 
 #include <string.h>
+#include <unistd.h>
+
 #include <algorithm>
 #include <cassert>
+#include <iostream>
 
-#define ROUNDUP(n, v) ((n)-1 + (v) - ((n)-1) % (v))
+#define ROUNDUP(n, v) ((n) - 1 + (v) - ((n) - 1) % (v))
 
 Request::Request(Database *db, uint32_t nwrites, uint64_t *writeset, uint64_t *updates)
 {
@@ -70,8 +73,17 @@ void Request::DoWrite(char *Record, uint64_t *updates)
 void Request::Execute()
 {
     Lock();
-    Txn();
-    Unlock();
+    if (isdeadLockFound)
+    {
+        isdeadLockFound = false;
+        sleep(0.01);
+        Execute();
+    }
+    else
+    {
+        Txn();
+        Unlock();
+    }
 }
 
 void Request::Txn()
@@ -90,14 +102,35 @@ void Request::Txn()
 
 void Request::Lock()
 {
-    /* 
+    /*
      * YOUR CODE HERE
      *
      * Hint: How can you ensure that there isn't a deadlock between requests?
      */
+
+    isdeadLockFound = false;
+    for (int i = 0; i < num_writes_; i++)
+    {
+        if (db_->isRecordLocked(writeset_[i]))
+        {
+            for (int j = 0; j < i; j++)
+            {
+                db_->UnlockRecord(writeset_[j]);
+            }
+            isdeadLockFound = true;
+            break;
+        }
+        else
+        {
+            db_->LockRecord(writeset_[i]);
+        }
+    }
 }
 
 void Request::Unlock()
 {
-    /* YOUR CODE HERE */
+    for (int i = 0; i < num_writes_; ++i)
+    {
+        db_->UnlockRecord(writeset_[i]);
+    }
 }
